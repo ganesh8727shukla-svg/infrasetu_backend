@@ -1,7 +1,60 @@
+from pathlib import Path
+from urllib.parse import urlparse
+
 from sqlalchemy.orm import Session
+from ultralytics import YOLO
 
 from app.models import AIDetection
 from app.services.ids import new_id
+
+MODEL_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "models"
+    / "NILSMS_best.pt"
+)
+
+model = YOLO(str(MODEL_PATH))
+
+
+CLASS_NAMES = {
+    0: "Longitudinal",
+    1: "Transverse",
+    2: "Alligator",
+    3: "Pothole",
+}
+
+
+def get_severity(confidence: float, detection_type: str) -> str:
+    if detection_type == "Pothole":
+        if confidence >= 0.70:
+            return "critical"
+        elif confidence >= 0.40:
+            return "high"
+        elif confidence >= 0.20:
+            return "medium"
+        return "low"
+
+    if confidence >= 0.70:
+        return "high"
+    elif confidence >= 0.40:
+        return "medium"
+
+    return "low"
+
+
+def resolve_image_source(image_url: str) -> str:
+    parsed = urlparse(image_url)
+
+    if parsed.path.startswith("/media/"):
+        filename = Path(parsed.path).name
+
+        upload_dir = Path(__file__).resolve().parents[2] / "storage" / "uploads"
+        local_path = upload_dir / filename
+
+        if local_path.exists():
+            return str(local_path)
+
+    return image_url
 
 
 def analyze_image(
@@ -11,21 +64,74 @@ def analyze_image(
     image_url: str,
     complaint_id: str | None = None,
 ) -> AIDetection:
-    """
-    Development adapter.
 
-    The source report requires an AI endpoint but does not specify the actual
-    model, input tensor, class list, or inference service. Therefore this is
-    intentionally deterministic and replaceable.
-    """
-    detection = AIDetection(
-        id=new_id("DET"),
-        asset_id=asset_id,
-        complaint_id=complaint_id,
-        image_url=image_url,
-        detection_type="Pothole",
-        confidence=94.0,
-        severity="critical",
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            f"YOLO model not found at: {MODEL_PATH}"
+        )
+
+    image_source = resolve_image_source(image_url)
+
+    results = model.predict(
+        source=image_source,
+        imgsz=640,
+        conf=0.10,
+        device="cpu",
+        verbose=False,
     )
-    db.add(detection)
-    return detection
+
+    if not results:
+        raise ValueError("YOLO returned no prediction result.")
+
+    result = results[0]
+    
+    if result.boxes is None or len(result.boxes) == 0:
+        detection = AIDetection(
+            id=new_id("DET"),
+            asset_id=asset_id,
+            complaint_id=complaint_id,
+            image_url=image_url,
+            detection_type="No damage detected",
+            confidence=0.0,
+            severity="low",
+        )
+
+        db.add(detection)
+        return detection
+
+    detections = []
+
+    for box in result.boxes:
+
+        class_id = int(box.cls[0].item())
+        confidence = float(box.conf[0].item())
+
+        detection_type = CLASS_NAMES.get(
+            class_id,
+            f"Class {class_id}",
+        )
+
+        severity = get_severity(
+            confidence,
+            detection_type,
+        )
+
+        detection = AIDetection(
+            id=new_id("DET"),
+            asset_id=asset_id,
+            complaint_id=complaint_id,
+            image_url=image_url,
+            detection_type=detection_type,
+            confidence=confidence * 100,
+            severity=severity,
+        )
+
+        db.add(detection)
+        detections.append(detection)
+
+    detections.sort(
+        key=lambda x: x.confidence,
+        reverse=True,
+    )
+
+    return detections[0]
