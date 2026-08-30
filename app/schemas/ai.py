@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel
 
 
 class AIAnalyzeRequest(BaseModel):
@@ -15,3 +16,8 @@ class AIDetectionOut(BaseModel):
     severity: str
     imageUrl: str
     createdAt: datetime
+
+
+class AIAnalyzeResponse(BaseModel):
+    detections: list[AIDetectionOut]
+    totalDetections: int
