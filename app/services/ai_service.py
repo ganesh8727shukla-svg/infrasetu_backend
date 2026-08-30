@@ -7,11 +7,13 @@ from ultralytics import YOLO
 from app.models import AIDetection
 from app.services.ids import new_id
 
+
 MODEL_PATH = (
     Path(__file__).resolve().parents[2]
     / "models"
     / "NILSMS_best.pt"
 )
+
 
 model = YOLO(str(MODEL_PATH))
 
@@ -48,7 +50,12 @@ def resolve_image_source(image_url: str) -> str:
     if parsed.path.startswith("/media/"):
         filename = Path(parsed.path).name
 
-        upload_dir = Path(__file__).resolve().parents[2] / "storage" / "uploads"
+        upload_dir = (
+            Path(__file__).resolve().parents[2]
+            / "storage"
+            / "uploads"
+        )
+
         local_path = upload_dir / filename
 
         if local_path.exists():
@@ -63,7 +70,7 @@ def analyze_image(
     asset_id: str,
     image_url: str,
     complaint_id: str | None = None,
-) -> AIDetection:
+) -> list[AIDetection]:
 
     if not MODEL_PATH.exists():
         raise FileNotFoundError(
@@ -81,25 +88,16 @@ def analyze_image(
     )
 
     if not results:
-        raise ValueError("YOLO returned no prediction result.")
-
-    result = results[0]
-    
-    if result.boxes is None or len(result.boxes) == 0:
-        detection = AIDetection(
-            id=new_id("DET"),
-            asset_id=asset_id,
-            complaint_id=complaint_id,
-            image_url=image_url,
-            detection_type="No damage detected",
-            confidence=0.0,
-            severity="low",
+        raise ValueError(
+            "YOLO returned no prediction result."
         )
 
-        db.add(detection)
-        return detection
+    result = results[0]
 
-    detections = []
+    if result.boxes is None or len(result.boxes) == 0:
+        return []
+
+    detections: list[AIDetection] = []
 
     for box in result.boxes:
 
@@ -134,4 +132,4 @@ def analyze_image(
         reverse=True,
     )
 
-    return detections[0]
+    return detections
