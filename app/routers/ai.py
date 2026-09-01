@@ -27,27 +27,28 @@ def analyze(
         require_roles("citizen", "admin")
     ),
 ):
-
+    # Check that the requested asset exists
     if not db.get(Asset, payload.assetId):
         raise HTTPException(
             status_code=404,
             detail="Asset not found",
         )
 
-
+    # Run AI analysis
     rows = analyze_image(
         db,
         asset_id=payload.assetId,
         image_url=payload.imageUrl,
     )
 
-
+    # Save AI detections
     db.commit()
 
+    # Refresh database-generated fields
     for row in rows:
         db.refresh(row)
 
-
+    # Convert database rows to API response objects
     detections = [
         AIDetectionOut(
             id=row.id,

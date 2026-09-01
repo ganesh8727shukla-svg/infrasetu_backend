@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -11,23 +9,13 @@ from sqlalchemy import create_engine, delete, text
 from sqlalchemy.orm import sessionmaker
 from geoalchemy2 import WKTElement
 
-# ---------------------------------------------------------------------------
-# Make backend package imports work when executing:
-#
-#     python scripts/seed.py
-# ---------------------------------------------------------------------------
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# ---------------------------------------------------------------------------
-# IMPORTANT:
-# Adjust this import if your project uses a different database module.
-# ---------------------------------------------------------------------------
-
 from app.core.config import settings
+from app.core.security import hash_password
 from app.models import (
     User,
     Contractor,
@@ -44,11 +32,6 @@ from app.models import (
     Notification,
 )
 
-
-# ---------------------------------------------------------------------------
-# DATABASE
-# ---------------------------------------------------------------------------
-
 DATABASE_URL = settings.database_url
 
 engine = create_engine(
@@ -63,42 +46,17 @@ SessionLocal = sessionmaker(
 )
 
 
-# ---------------------------------------------------------------------------
-# HELPERS
-# ---------------------------------------------------------------------------
-
 def utc(dt: datetime) -> datetime:
-    """Return an aware UTC datetime."""
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
-
     return dt.astimezone(timezone.utc)
 
 
 def dt_from_iso(value: str) -> datetime:
-    """
-    Convert frontend ISO datetime strings to timezone-aware datetime.
-    """
     return utc(datetime.fromisoformat(value.replace("Z", "+00:00")))
 
 
-def d_from_iso(value: str) -> date:
-    """
-    Convert an ISO datetime/date string into a Python date.
-    """
-    return dt_from_iso(value).date()
-
-
 def point(latitude: float, longitude: float) -> WKTElement:
-    """
-    Create PostGIS POINT geometry.
-
-    WKT order is:
-        longitude latitude
-
-    NOT:
-        latitude longitude
-    """
     return WKTElement(
         f"POINT({longitude} {latitude})",
         srid=4326,
@@ -106,20 +64,11 @@ def point(latitude: float, longitude: float) -> WKTElement:
 
 
 def crore(value: str) -> Decimal:
-    """
-    Convert frontend strings such as:
-
-        ₹8.4 Cr
-        ₹52.1 Cr
-
-    into Decimal values representing crores.
-    """
     cleaned = (
         value.replace("₹", "")
         .replace("Cr", "")
         .strip()
     )
-
     return Decimal(cleaned)
 
 
@@ -127,96 +76,86 @@ def log(message: str) -> None:
     print(f"[seed] {message}")
 
 
-# ---------------------------------------------------------------------------
-# DEVELOPMENT USERS
-# ---------------------------------------------------------------------------
-
 USERS = [
     {
         "id": "GOV-ADMIN",
         "name": "InfraSetu Administrator",
         "role": "admin",
         "organisation": "InfraSetu Government Administration",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
-
     {
         "id": "USR-8821",
         "name": "R. Deshmukh",
         "role": "citizen",
         "organisation": "Citizen",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
     {
         "id": "USR-7710",
         "name": "S. Kulkarni",
         "role": "citizen",
         "organisation": "Citizen",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
     {
         "id": "USR-4412",
         "name": "A. Pawar",
         "role": "citizen",
         "organisation": "Citizen",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
     {
         "id": "USR-9902",
         "name": "M. Shaikh",
         "role": "citizen",
         "organisation": "Citizen",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
     {
         "id": "USR-3310",
         "name": "P. Nair",
         "role": "citizen",
         "organisation": "Citizen",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
     {
         "id": "USR-1180",
         "name": "K. Jadhav",
         "role": "citizen",
         "organisation": "Citizen",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
-
     {
         "id": "CON-01-USER",
         "name": "Apex Infrastructure",
         "role": "contractor",
         "organisation": "Apex Infrastructure",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
     {
         "id": "CON-02-USER",
         "name": "Maharashtra RoadWorks",
         "role": "contractor",
         "organisation": "Maharashtra RoadWorks",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
     {
         "id": "CON-03-USER",
         "name": "UrbanLink Projects",
         "role": "contractor",
         "organisation": "UrbanLink Projects",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
     {
         "id": "CON-04-USER",
         "name": "Shivam Infra Solutions",
         "role": "contractor",
         "organisation": "Shivam Infra Solutions",
-        "password_hash": "DEV_ONLY_PASSWORD_HASH",
+        "password_hash": hash_password("demo1234"),
     },
 ]
 
-
-# ---------------------------------------------------------------------------
-# CONTRACTORS
-# ---------------------------------------------------------------------------
 
 CONTRACTORS = [
     {
@@ -273,10 +212,6 @@ CONTRACTORS = [
     },
 ]
 
-
-# ---------------------------------------------------------------------------
-# ASSETS
-# ---------------------------------------------------------------------------
 
 ASSETS = [
     {
@@ -462,10 +397,6 @@ ASSETS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# AI DETECTIONS
-# ---------------------------------------------------------------------------
-
 DETECTIONS = [
     {
         "id": "AID-5001",
@@ -518,10 +449,6 @@ DETECTIONS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# COMPLAINTS
-# ---------------------------------------------------------------------------
-
 COMPLAINTS = [
     {
         "id": "CIT-10291",
@@ -535,7 +462,7 @@ COMPLAINTS = [
         "risk_score": 87,
         "status": "Work Order Created",
         "created_at": "2026-08-19T09:55:00+05:30",
-        "work_order_id": None,
+        "work_order_id": "WO-1024",
     },
     {
         "id": "CIT-10288",
@@ -549,7 +476,7 @@ COMPLAINTS = [
         "risk_score": 78,
         "status": "Work Order Created",
         "created_at": "2026-08-19T07:40:00+05:30",
-        "work_order_id": None,
+        "work_order_id": "WO-1026",
     },
     {
         "id": "CIT-10284",
@@ -609,10 +536,6 @@ COMPLAINTS = [
     },
 ]
 
-
-# ---------------------------------------------------------------------------
-# WORK ORDERS
-# ---------------------------------------------------------------------------
 
 WORK_ORDERS = [
     {
@@ -718,10 +641,6 @@ WORK_ORDERS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# ALERTS
-# ---------------------------------------------------------------------------
-
 ALERTS = [
     {
         "id": "ALR-9001",
@@ -798,10 +717,6 @@ ALERTS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# RISK SCORES
-# ---------------------------------------------------------------------------
-
 RISK_SCORES = [
     {
         "id": "RISK-ROAD-MH-001",
@@ -874,10 +789,6 @@ RISK_SCORES = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# MAINTENANCE HISTORY
-# ---------------------------------------------------------------------------
-
 MAINTENANCE = [
     {
         "id": "MHIST-001",
@@ -909,10 +820,6 @@ MAINTENANCE = [
     },
 ]
 
-
-# ---------------------------------------------------------------------------
-# SATELLITE RECORDS
-# ---------------------------------------------------------------------------
 
 def build_satellite_records():
     records = []
@@ -995,10 +902,6 @@ def build_satellite_records():
 
     return records, observations
 
-
-# ---------------------------------------------------------------------------
-# AUDIT LOGS
-# ---------------------------------------------------------------------------
 
 AUDIT_LOGS = [
     {
@@ -1133,10 +1036,6 @@ AUDIT_LOGS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# NOTIFICATIONS
-# ---------------------------------------------------------------------------
-
 NOTIFICATIONS = [
     {
         "id": "N1",
@@ -1173,22 +1072,11 @@ NOTIFICATIONS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# SEED
-# ---------------------------------------------------------------------------
-
 def seed() -> None:
     session = SessionLocal()
 
     try:
         log("Starting database seed...")
-
-        # ---------------------------------------------------------------
-        # Clear existing development data.
-        #
-        # Children must be removed before parents because of FKs.
-        # ---------------------------------------------------------------
-
         log("Clearing existing development data...")
 
         session.execute(delete(Notification))
@@ -1200,10 +1088,6 @@ def seed() -> None:
         session.execute(delete(RiskScore))
         session.execute(delete(AIDetection))
 
-        # Circular relationship:
-        # work_orders <-> complaints
-        #
-        # Remove the FK links first.
         session.execute(
             text(
                 """
@@ -1217,13 +1101,12 @@ def seed() -> None:
         session.execute(delete(Complaint))
         session.execute(delete(Asset))
         session.execute(delete(Contractor))
+
+        session.execute(text("DELETE FROM uploads"))
+
         session.execute(delete(User))
 
         session.flush()
-
-        # ---------------------------------------------------------------
-        # USERS
-        # ---------------------------------------------------------------
 
         log(f"Inserting {len(USERS)} users...")
 
@@ -1232,20 +1115,12 @@ def seed() -> None:
 
         session.flush()
 
-        # ---------------------------------------------------------------
-        # CONTRACTORS
-        # ---------------------------------------------------------------
-
         log(f"Inserting {len(CONTRACTORS)} contractors...")
 
         for row in CONTRACTORS:
             session.add(Contractor(**row))
 
         session.flush()
-
-        # ---------------------------------------------------------------
-        # ASSETS
-        # ---------------------------------------------------------------
 
         log(f"Inserting {len(ASSETS)} assets...")
 
@@ -1277,10 +1152,6 @@ def seed() -> None:
 
         session.flush()
 
-        # ---------------------------------------------------------------
-        # COMPLAINTS
-        # ---------------------------------------------------------------
-
         log(f"Inserting {len(COMPLAINTS)} complaints...")
 
         for row in COMPLAINTS:
@@ -1305,10 +1176,6 @@ def seed() -> None:
             )
 
         session.flush()
-
-        # ---------------------------------------------------------------
-        # WORK ORDERS
-        # ---------------------------------------------------------------
 
         log(f"Inserting {len(WORK_ORDERS)} work orders...")
 
@@ -1338,10 +1205,6 @@ def seed() -> None:
 
         session.flush()
 
-        # ---------------------------------------------------------------
-        # RESTORE COMPLAINT -> WORK ORDER LINKS
-        # ---------------------------------------------------------------
-
         log("Restoring complaint/work-order relationships...")
 
         for row in COMPLAINTS:
@@ -1362,10 +1225,6 @@ def seed() -> None:
 
         session.flush()
 
-        # ---------------------------------------------------------------
-        # AI DETECTIONS
-        # ---------------------------------------------------------------
-
         log(f"Inserting {len(DETECTIONS)} AI detections...")
 
         for row in DETECTIONS:
@@ -1384,10 +1243,6 @@ def seed() -> None:
 
         session.flush()
 
-        # ---------------------------------------------------------------
-        # RISK SCORES
-        # ---------------------------------------------------------------
-
         log(f"Inserting {len(RISK_SCORES)} risk scores...")
 
         for row in RISK_SCORES:
@@ -1403,10 +1258,6 @@ def seed() -> None:
             )
 
         session.flush()
-
-        # ---------------------------------------------------------------
-        # ALERTS
-        # ---------------------------------------------------------------
 
         log(f"Inserting {len(ALERTS)} alerts...")
 
@@ -1428,10 +1279,6 @@ def seed() -> None:
 
         session.flush()
 
-        # ---------------------------------------------------------------
-        # MAINTENANCE
-        # ---------------------------------------------------------------
-
         log(f"Inserting {len(MAINTENANCE)} maintenance records...")
 
         for row in MAINTENANCE:
@@ -1447,20 +1294,12 @@ def seed() -> None:
 
         session.flush()
 
-        # ---------------------------------------------------------------
-        # SATELLITE
-        # ---------------------------------------------------------------
-
         satellite_records, satellite_observations = build_satellite_records()
 
-        log(
-            f"Inserting {len(satellite_records)} satellite records..."
-        )
+        log(f"Inserting {len(satellite_records)} satellite records...")
 
         for row in satellite_records:
-            session.add(
-                SatelliteRecord(**row)
-            )
+            session.add(SatelliteRecord(**row))
 
         session.flush()
 
@@ -1469,15 +1308,9 @@ def seed() -> None:
         )
 
         for row in satellite_observations:
-            session.add(
-                SatelliteObservation(**row)
-            )
+            session.add(SatelliteObservation(**row))
 
         session.flush()
-
-        # ---------------------------------------------------------------
-        # AUDIT LOGS
-        # ---------------------------------------------------------------
 
         log(f"Inserting {len(AUDIT_LOGS)} audit logs...")
 
@@ -1498,10 +1331,6 @@ def seed() -> None:
 
         session.flush()
 
-        # ---------------------------------------------------------------
-        # NOTIFICATIONS
-        # ---------------------------------------------------------------
-
         log(f"Inserting {len(NOTIFICATIONS)} notifications...")
 
         for row in NOTIFICATIONS:
@@ -1518,16 +1347,11 @@ def seed() -> None:
 
         session.flush()
 
-        # ---------------------------------------------------------------
-        # COMMIT
-        # ---------------------------------------------------------------
-
         session.commit()
 
         log("========================================")
         log("DATABASE SEED COMPLETED SUCCESSFULLY")
         log("========================================")
-
         log(f"Users:                 {len(USERS)}")
         log(f"Contractors:           {len(CONTRACTORS)}")
         log(f"Assets:                {len(ASSETS)}")
